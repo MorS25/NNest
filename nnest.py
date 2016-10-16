@@ -11,31 +11,47 @@ from numpy.random import multivariate_normal
 import numpy as np
 import math
 
+def gaussMarkovProcess(t, tau, sigma):
+    noise = np.random.normal(0, sigma, t.size)
+    gamma = np.zeros(t.size)
+    for k in range(t.size-1):
+        gamma[k+1]=gamma[k]+dt*(-1/tau*gamma[k]+noise[k])
+    return gamma
+
+def PIDcontroller(K, x):
+    return -K*x
+
+def runSimulation(t, controller, x0=None, perturbation=None):
+    if perturbation is None:
+        perturbation = np.zeros(t.size)
+    A = np.matrix([[1, dt],
+                  [0, 1]])
+    B = np.matrix([[0],
+                   [dt]])
+    x = np.zeros((2, t.size))
+    if x0 is not None:
+        x[:,0] = x0
+    u = np.zeros(t.size)
+    for k in range(t.size-1):
+        u[k+1] = controller(x[:,k,None])
+        x[:,k+1,None] = A*x[:,k,None]+B*(u[k+1]+perturbation[k+1])
+    return (x, u)
+
 
 # Time
 dt = 0.005
 t = arange(0,5,dt)
+
 # Setpoint
 x_ref = np.zeros(t.size)
+
 # Perturbation
-tau = 3
-sigma = 500
-noise = np.random.normal(0, sigma, t.size)
-wind = np.zeros(t.size)
-for k in range(t.size-1):
-	wind[k+1]=wind[k]+dt*(-1/tau*wind[k]+noise[k])
+wind = gaussMarkovProcess(t, tau=3, sigma=500)
+
 # PID Response
-A = np.matrix([[1, dt],
-              [0, 1]])
-B = np.matrix([[0],
-               [dt]])
 K = np.matrix([120, 20])
-x = np.zeros((2, t.size))
-x[:,0] = [1,0]
-u = np.zeros(t.size)
-for k in range(t.size-1):
-    u[k+1] = -K*x[:,k,None]
-    x[:,k+1,None] = A*x[:,k,None]+B*(u[k+1]+wind[k+1])
+pid = lambda x: PIDcontroller(K, x)
+(x, u) = runSimulation(t, pid, x0 = [1,0], perturbation=wind)
 
 # Dataset
 ds = SupervisedDataSet(inp=2, target=1)
@@ -48,13 +64,8 @@ trainer = BackpropTrainer( fnn, dataset=ds, momentum=0.1, verbose=True)
 trainer.trainUntilConvergence(maxEpochs = 20)
 
 # Network Response
-xNN = np.zeros((2, t.size))
-uNN = np.zeros(t.size)
-xNN[:,0] = [-2,0]
-for k in range(t.size-1):
-    uNN[k+1] = fnn.activate((xNN[0,k], xNN[1,k]))
-    xNN[:,k+1,None] = A*xNN[:,k,None]+B*(uNN[k+1]+wind[k+1])
-
+NNcontroller = lambda x: fnn.activate((x[0], x[1]))
+(xNN, uNN) = runSimulation(t, NNcontroller, x0=[-2,0], perturbation=wind)
 
 figure(1)
 ioff()
