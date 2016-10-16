@@ -11,7 +11,6 @@ from neat.config import Config
 from neat.math_util import mean
 
 runs_per_net = 5
-num_steps = 1000
 
 def evaluate_genome(g):
     net = nn.create_feed_forward_phenotype(g)
@@ -19,11 +18,12 @@ def evaluate_genome(g):
     fitnesses = []
 
     for runs in range(runs_per_net):
-        sim = drone.Drone(steps=num_steps)
+        time = np.arange(0,5,drone.Drone.time_step)
+        reference = drone.generateSineReference(time)
+        sim = drone.Drone(time, reference)
 
-        # Run the given simulation for up to num_steps time steps.
         fitness = 0.0
-        for s in range(num_steps):
+        for s in range(time.size-1):
             inputs = sim.get_scaled_state()
             action = net.serial_activate(inputs)
 
@@ -31,11 +31,11 @@ def evaluate_genome(g):
             force = drone.continuous_actuator_force(action)
             sim.step(force)
 
-            if abs(sim.x[0]) >= sim.x_limit[0]:
-                fitness += -np.linalg.norm(sim.x)*(num_steps-runs)
+            if sim.diverges():
+                fitness += -10*sim.currentSquareError()*(time.size-runs)
                 break
 
-            fitness += -np.linalg.norm(sim.x)
+            fitness += -sim.currentSquareError()
 
         fitnesses.append(fitness)
 
@@ -50,12 +50,12 @@ def run():
 
     pop = population.Population(config)
     pe = parallel.ParallelEvaluator(4, evaluate_genome)
-    pop.run(pe.evaluate, 15)
+    pop.run(pe.evaluate, 200)
 
     # Save the winner.
     print('Number of evaluations: {0:d}'.format(pop.total_evaluations))
     winner = pop.statistics.best_genome()
-    with open('nn_winner_genome', 'wb') as f:
+    with open('nn_winner_genome.gen', 'wb') as f:
         pickle.dump(winner, f)
 
     print(winner)
