@@ -18,20 +18,24 @@ t = arange(0,5,dt)
 # Setpoint
 x_ref = np.zeros(t.size)
 # Perturbation
-T = 3
-tau = 5*np.sin(2*math.pi/T*t)
+tau = 3
+sigma = 500
+noise = np.random.normal(0, sigma, t.size)
+wind = np.zeros(t.size)
+for k in range(t.size-1):
+	wind[k+1]=wind[k]+dt*(-1/tau*wind[k]+noise[k])
 # PID Response
-K = np.matrix([120, 20])
-x = np.zeros((2, t.size))
-u = np.zeros(t.size)
-x[:,0] = [1,0]
 A = np.matrix([[1, dt],
               [0, 1]])
 B = np.matrix([[0],
                [dt]])
+K = np.matrix([120, 20])
+x = np.zeros((2, t.size))
+x[:,0] = [1,0]
+u = np.zeros(t.size)
 for k in range(t.size-1):
     u[k+1] = -K*x[:,k,None]
-    x[:,k+1,None] = A*x[:,k,None]+B*(u[k+1]+tau[k+1])
+    x[:,k+1,None] = A*x[:,k,None]+B*(u[k+1]+wind[k+1])
 
 # Dataset
 ds = SupervisedDataSet(inp=2, target=1)
@@ -49,7 +53,7 @@ uNN = np.zeros(t.size)
 xNN[:,0] = [-2,0]
 for k in range(t.size-1):
     uNN[k+1] = fnn.activate((xNN[0,k], xNN[1,k]))
-    xNN[:,k+1,None] = A*xNN[:,k,None]+B*(uNN[k+1]+tau[k+1])
+    xNN[:,k+1,None] = A*xNN[:,k,None]+B*(uNN[k+1]+wind[k+1])
 
 
 figure(1)
@@ -58,7 +62,7 @@ clf()
 hold(True)
 grid()
 plot(t, x_ref, 'r')
-plot(t, tau/100, 'c')
+plot(t, wind/100, 'c')
 plot(t, x[0,:], 'b')
 plot(t, xNN[0,:], 'g')
 ion()
