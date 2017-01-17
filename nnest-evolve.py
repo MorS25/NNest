@@ -10,7 +10,7 @@ from neat import nn, parallel, population, visualize
 from neat.config import Config
 from neat.math_util import mean
 
-runs_per_net = 5
+runs_per_net = 3
 
 def evaluate_genome(g):
     net = nn.create_feed_forward_phenotype(g)

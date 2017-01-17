@@ -4,7 +4,7 @@ import pickle
 import drone
 import numpy as np
 from neat import nn
-from pylab import ion, ioff, figure, draw, contourf, clf, show, hold, plot, scatter, grid
+import matplotlib.pyplot as plt
 
 # load the winner
 with open('nn_winner_genome.gen', 'rb') as f:
@@ -25,14 +25,21 @@ for s in range(time.size-1):
     force = drone.continuous_actuator_force(action)
     sim.step(force)
 
-figure(1)
-ioff()
-clf()
-hold(True)
-grid()
-plot(sim.time, sim.reference[0,:], 'r')
-plot(sim.time, sim.xx[0,:], 'b')
-ion()
-draw()
-ioff()
-show()
+
+plt.figure(1)
+plt.subplot(311)
+plt.hold(True)
+plt.grid()
+plt.plot(sim.time, sim.reference[0,:], 'r')
+plt.plot(sim.time, sim.xx[0,:], 'b')
+plt.subplot(312)
+plt.hold(True)
+plt.grid()
+plt.plot(sim.time, sim.reference[1,:], 'r')
+plt.plot(sim.time, sim.xx[1,:], 'b')
+plt.subplot(313)
+plt.hold(True)
+plt.grid()
+plt.plot(sim.time, sim.uu, 'c')
+plt.plot(sim.time, sim.perturbation, 'm')
+plt.show()
