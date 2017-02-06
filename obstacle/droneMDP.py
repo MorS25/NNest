@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 DEG_TO_RAD = math.pi/180
 
 class DroneMDP(object):
-    def __init__(self, obstacle=5):
+    def __init__(self, obstacle=100):
         self.drone = drone.Drone()
         self.obstacle = obstacle
 
@@ -18,20 +18,25 @@ class DroneMDP(object):
         state = self.mdpState(params)
         return reward, state
 
+    def reset(self):
+        self.drone.reset()
+
     """ x, d, ucmd"""
     def mdpState(self, params):
-        state = [params['ucmd'], self.drone.x[1], self.obstacle - self.drone.x[1]]
-        return state
+        state = [params['ucmd'], self.obstacle - self.drone.x[0,0], self.drone.x[1,0]]
+        return np.array(state).reshape((1,3))
 
     def mdpAction(self, action):
-        u = action
+        u = (action-1)*10*DEG_TO_RAD
         self.drone.step(u)
 
     def mdpReward(self, params):
-        alpha = 0.5
-        beta = 1
-        distanceMin = 1
-        reward = -alpha*(params["ucmd"] - self.drone.u)**2 -beta/(1+((self.obstacle-self.drone.x[1])/distanceMin)**2)
+        alpha = 1.
+        beta = 5.
+        dObs = self.obstacle-self.drone.x[0,0]
+        reward = -500.
+        if dObs > np.sqrt(beta/500.):
+            reward = -alpha*(params["ucmd"] - self.drone.u)**2 -beta/(dObs**2)
         return reward
 
 
@@ -44,7 +49,7 @@ def test():
     rr = np.zeros(np.size(time))
     ss = np.zeros((np.size(time), np.size(dMDP.mdpState(params))))
     for t in range(time.size):
-        action = 20*DEG_TO_RAD*math.cos(2*math.pi*time[t]/8)
+        action = 2 #*math.cos(2*math.pi*time[t]/8)
         reward, state = dMDP.step(action, params)
         rr[t] = reward
         ss[t] = state
@@ -58,4 +63,5 @@ def test():
     plt.plot(time, rr, 'b')
     plt.show()
 
-test()
+if __name__ == "__main__":
+    test()
